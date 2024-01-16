@@ -1,0 +1,64 @@
+import Cutsheet_maker_backend_Ne as backend
+
+switch_details = []
+
+userChoice = "2"
+
+# file_name = "ne-lin-nhh-hosp-ac-0011-01 NetDB.txt".lower()
+
+file_name = "Finished cutsheet ne-lin-nhh-hosp-ac-0011-01.csv".lower()
+
+patch_panel_file = "ne-lin-nhh-hosp-ac-0011-01.csv".lower()
+
+site_vlans = "Nebraska Heart L2 Vlans.txt"
+
+# wap_file = "Flaget AP Deployment Spreadsheet_10_31_2023.csv".lower()
+
+legacy_ip = "10.104.0.248"          #Input needed for inital cutsheet
+new_switch = "kyfbk-main-mdf-as1"   #Input needed for inital cutsheet
+new_ip = "10.165.0.77"              #Input needed for inital cutsheet
+
+switch_count = "1"                  #Input needed for final cutsheet
+
+if userChoice == "1":
+    backend.legacy_switch_name_finder(file_name)
+    backend.line_combiner(file_name)
+    backend.only_connected()
+    backend.excess_data_removal()
+    backend.formatter()
+    backend.data_adder(legacy_ip, new_switch, new_ip)
+    backend.access_vlan_finder()
+    backend.mac_and_ip_2()
+
+if userChoice == "2":
+    if int(switch_count) > 1:
+        for i in range(int(switch_count)):
+            switch_model = "9300"
+            filled_blades_input = "1,2"    #Input needed for final cutsheet
+
+            filled_blades = {int(i):1 for i in filled_blades_input.split(",") if i.isnumeric()}
+            switch = backend.new_switch(switch_model,filled_blades)
+            switch_details.append(switch)
+
+    else:
+        switch_model = "9300"                       #Input needed for final cutsheet
+        filled_blades_input = "1,2"             #Input needed for final cutsheet
+
+        filled_blades = {int(i):1 for i in filled_blades_input.split(",") if i.isnumeric()}
+        switch = backend.new_switch(switch_model,filled_blades)
+        switch_details.append(switch)
+
+    # max_port = backend.max_port_finder(wap_file, file_name, switch_count)
+    max_port = 36
+    backend.legacy_switch_name_finder(file_name)
+    backend.port_data_adder(file_name, patch_panel_file, switch_details, max_port)
+    backend.new_switch_port_adder(switch_details,max_port)
+    backend.idf_config(site_vlans,switch_details)
+    # backend.wap_sheet(file_name,wap_file,switch_details)
+    # backend.add_wap_to_idf(switch_details)
+
+
+
+
+
+    
