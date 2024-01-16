@@ -1,10 +1,11 @@
 import os
 import Cutsheet_maker_backend_Ne as backend
 
-user_choices = ["1","2","3","4","5"]
+user_choices = ["1","2","3","4","5","6"]
 user_exits = ["exit","end","no","quit","stop",] 
 possible_switch_count = ["1","2","3"]
 not_ava = ["na", "n/a"]
+switch_models = ["9410","9407","9300"]
 
 while True:
 
@@ -70,9 +71,10 @@ while True:
                     continue
                 
                 else:
-                    continue
+                    break
 
-            else:
+            if no_connections != 1:
+
                 backend.excess_data_removal()
                 backend.formatter()
                 backend.data_adder(legacy_ip, new_switch, new_ip)
@@ -87,15 +89,13 @@ while True:
                         continue
                     
                     else:
-                        userChoice = input("What do you want to do?\nOption 1: Formats NetDB reports\nOption 2: Adds portmapping data to the Formatted NetDB reports, and builds the IDF config\n\nYour choice is ")
-                        print()
-                        continue
+                        break
     
     if userChoice == "2":
         while True:
             switch_details = []
 
-            file_name = input("What is the formatted NetDB file name?\nYour choice is ").lower()
+            file_name = input("What is the incomplete NetDB file name?\nYour choice is ").lower()
             print()
             
             if ".csv" not in file_name and file_name not in user_exits:
@@ -103,7 +103,7 @@ while True:
 
             if os.path.isfile(file_name) == False and file_name not in user_exits:
                 while True:
-                    file_name = input("That is not a vaild file name\nWhat is the formatted NetDB file name?\n\nYour choice is ").lower()
+                    file_name = input("That is not a vaild file name\nWhat is the incomplete NetDB file name?\n\nYour choice is ").lower()
                     print()
 
                     if file_name in user_exits:
@@ -119,7 +119,7 @@ while True:
                 break
                 
                     
-            switch_count = input("How many new switches are in the IDF/MDF, 1 - 3?\nYour choice is ")
+            switch_count = input("How many new chassis or stacks are in the IDF/MDF, 1 or 2?\nYour choice is ")
             print()
             
             if switch_count.isnumeric() == False and switch_count not in possible_switch_count and switch_count not in user_exits:
@@ -136,7 +136,7 @@ while True:
             if switch_count in user_exits:
                 break
 
-            patch_panel_file = input("What is the portmapping file name?\nYour choice is ").lower()
+            patch_panel_file = input("What is the complete NetDB file name?\nYour choice is ").lower()
             print()
             
             if ".csv" not in patch_panel_file and patch_panel_file not in user_exits:
@@ -144,7 +144,7 @@ while True:
             
             if os.path.isfile(patch_panel_file) == False and patch_panel_file not in user_exits:
                 while True:
-                    patch_panel_file = input("That is not a vaild file name\nWhat is the portmapping file name?\n\nYour choice is ").lower()
+                    patch_panel_file = input("That is not a vaild file name\nWhat is the complete NetDB file name?\n\nYour choice is ").lower()
                     print()
 
                     if patch_panel_file in user_exits:
@@ -207,8 +207,16 @@ while True:
 
             if int(switch_count) > 1:
                 for i in range(int(switch_count)):
-                    switch_model = input(f"What is the model of switch {i+1}? ")
+                    switch_model = input(f"What is the model of switch {i+1}, choose either 9410, 9407, 9300? ")
                     print()
+
+                    if switch_model not in switch_models:
+                        while True:
+                            switch_model = input(f"That is not a valid switch model, please choose either 9410, 9407, 9300? ")
+                            print()
+
+                            if switch_model in switch_models:
+                                break
 
                     if switch_model == "9410":
                         filled_blades_input = input("What blades are filled in the 9410?\nExample 1,2,7,8 are filled\nYour input is  ")
@@ -226,7 +234,15 @@ while True:
             else:
                 switch_model = input(f"What is the model of switch? ")
                 print()
-                    
+
+                if switch_model not in switch_models:
+                    while True:
+                        switch_model = input(f"That is not a valid switch model, please choose either 9410, 9407, 9300? ")
+                        print()
+                        
+                        if switch_model in switch_models:
+                            break
+                
                 if switch_model == "9410":
                     filled_blades_input = input("What blades are filled in the 9410?\nExample 1,2,7,8 are filled\nYour input is  ")
 
