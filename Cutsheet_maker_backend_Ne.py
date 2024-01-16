@@ -595,7 +595,7 @@ def new_switch_port_adder(switch_details,max_port):
                             switch_blade_count[int(list_of_i[9][-1])][0] += 1
                             switch_blade_count[int(list_of_i[9][-1])][1] = 1
                             
-                        if int(list_of_i[10][-2]) != switch_blade_count[int(list_of_i[9][-1])][0]:
+                        if int(list_of_i[10][-1]) != switch_blade_count[int(list_of_i[9][-1])][0]:
                             if switch_details[int(list_of_i[9][-1])-1].filled_blades[int(list_of_i[10][-1])] == max_port:
                                 continue
 
