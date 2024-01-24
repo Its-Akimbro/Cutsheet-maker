@@ -2,13 +2,12 @@ import os
 from datetime import datetime, timedelta
 
 legacy_switch_name = ""
-Date = str(datetime.today() - timedelta(days=70))
+Date = str(datetime.today() - timedelta(days=7))
 header = "Legacy Switch,Legacy Switch IP,Legacy Switch Port,PP Port #,New Switch,New Switch IP,New Switch Port,New Patch Cord Color,Critical Device (Y/N),John's suggested switch,John's suggested blade and port,Status,Speed,Duplex,Access Vlan,Voice Vlan,Legacy Port Description,Mac Address,IP Address,Vendor,First Seen,Last Seen"
 ap_mac = ["c8:4c:75","50:87:89","88:f0:31"]
 
 ap_vlan = ""
 new_switch_name = ""
-
 
 class new_switch():
     def __init__(self, switch_model: str,filled_blades: dict):
@@ -71,7 +70,6 @@ def only_connected():
         os.remove(f"Lines Combined {legacy_switch_name}.txt")
         print(f"\nThere are no end user devices connected to switch {legacy_switch_name}\n")
         return 1
-
 
     else:
         os.remove(f"Lines Combined {legacy_switch_name}.txt")
@@ -144,7 +142,7 @@ def data_adder(legacy_ip, new_switch, new_ip):
                             list_of_i.pop(14)
                             list_of_i.insert(14,"")
                             list_of_i.pop(16)
-
+                            
                     if list_of_i[17][:8] in ap_mac:
                         list_of_i.insert(7,"Purple")
                         list_of_i.pop(8)
@@ -186,15 +184,18 @@ def data_adder(legacy_ip, new_switch, new_ip):
                             if phone_lap[17][:8] in ap_mac or matches[1][16][:8] in ap_mac or matches[1][17][:8] in ap_mac:
                                 phone_lap.insert(7,"Purple")
                                 phone_lap.pop(8)   
-                                print("i ran")
 
                             else:
                                 phone_lap.insert(7,"Blue")
                                 phone_lap.pop(8)
 
-                        parentasisesRemover = matches[1][14].find("(")
-                        phone_lap.insert(15, matches[1][14][:parentasisesRemover])
-                        phone_lap.pop(16)
+                        if "(" in matches[1][14]:
+                            parentasisesRemover = matches[1][14].find("(")
+                            phone_lap.insert(15, matches[1][14][:parentasisesRemover])
+                            phone_lap.pop(16)
+                        else:
+                            phone_lap.insert(15, matches[1][14])
+                            phone_lap.pop(16)
 
                         phone_lap.append(matches[1][17])
                         phone_lap.append(matches[1][18])
@@ -235,9 +236,13 @@ def data_adder(legacy_ip, new_switch, new_ip):
                             main_row.pop(8)
 
                     parentasisesRemover = matches[1][14].find("(")
-                    main_row.insert(15, matches[1][14][:parentasisesRemover])
-                    main_row.pop(16)
-                    
+                    if "(" in matches[1][14]:
+                        main_row.insert(15, matches[1][14][:parentasisesRemover])
+                        main_row.pop(16)
+                    else:
+                        main_row.insert(15, matches[1][14])
+                        main_row.pop(16)
+
                     for i in matches:
                         if i != main_row:
                             count += 1
@@ -250,8 +255,9 @@ def data_adder(legacy_ip, new_switch, new_ip):
                             test = list(i[:21])
                             test.pop(-1)
                             main_row.insert(21,"".join(test))
+
                             main_row.pop(22)
-                    
+
                     final_data.write(",".join(main_row)+"\n")
 
 
@@ -403,8 +409,7 @@ def port_data_adder(file_name, port_file_name,switch_details,max_port):
             switch_2_count = 0
             switch_2_blade_count = 1
 
-            switch_3_count = 0
-            switch_3_blade_count = 1
+            switch_count = 0
 
             for i in python_made_data:
                 with open(port_file_name) as patch_panel:
@@ -416,39 +421,31 @@ def port_data_adder(file_name, port_file_name,switch_details,max_port):
 
                         if list_of_k[1] == list_of_i[2] and list_of_i[3] == "":
 
-                            if "AS-".lower() in list_of_k[4]:
-                                switch_num = "Switch " + list_of_k[4][list_of_k[4].find("AS-".lower())+3]
-
-                            elif "AS-".upper() in list_of_k[4]:
-                                switch_num = "Switch " + list_of_k[4][list_of_k[4].find("AS-".upper())+3]
+                            if "as-" in list_of_k[5].lower():
+                                switch_num = "Switch " + list_of_k[5][list_of_k[5].find("AS-".lower())]
 
                             else:
-                                switch_num = "Switch 1"
+                                switch_count += 1
+                                if switch_count % 2 == 0:                   
+                                    switch_num = f"Switch 2"
+
+                                else:
+                                    switch_num = f"switch 1"
 
                             list_of_i.insert(9,switch_num)
                             list_of_i.pop(10)
                             
-                            if "B".lower() in list_of_k[4]:
-                                if list_of_k[4].find("AS".lower()) > list_of_k[4].find("B".lower()):
-                                    blade_num = list_of_k[4][list_of_k[4].find("B".lower()):list_of_k[4].find("AS".lower())]
+                            if "b" in list_of_k[5].lower():
+                                if list_of_k[5].find("AS".lower()) > list_of_k[5].find("B".lower()):
+                                    blade_num = list_of_k[5][list_of_k[5].find("B".lower()):list_of_k[5].find("AS".lower())]
 
-                                elif list_of_k[4].find("AS".upper()) > list_of_k[4].find("B".lower()):
-                                    blade_num = list_of_k[4][list_of_k[4].find("B".lower()):list_of_k[4].find("AS".upper())]
-
-                                else:
-                                    blade_num = list_of_k[4][list_of_k[4].find("B".lower()):]
-
-                            elif "B".upper() in list_of_k[4]:
-                                if list_of_k[4].find("AS".lower()) > list_of_k[4].find("B".lower()):
-                                    blade_num = list_of_k[4][list_of_k[4].find("B".upper()):list_of_k[4].find("AS".lower())]
-
-                                elif list_of_k[4].find("AS".upper()) > list_of_k[4].find("B".lower()):
-                                    blade_num = list_of_k[4][list_of_k[4].find("B".upper()):list_of_k[4].find("AS".upper())]
+                                elif list_of_k[5].find("AS".upper()) > list_of_k[5].find("B".lower()):
+                                    blade_num = list_of_k[5][list_of_k[5].find("B".lower()):list_of_k[5].find("AS".upper())]
 
                                 else:
-                                    blade_num = list_of_k[4][list_of_k[4].find("B".upper()):]
+                                    blade_num = list_of_k[5][list_of_k[5].find("B".lower()):]
 
-                            elif list_of_k[4] == "" or "b" not in list_of_k[4] or "B" not in list_of_k[4]:
+                            elif list_of_k[5] == "" or "b" not in list_of_k[5]:
                                 
                                 if len(switch_details) == 1:                                        
                                         if switch_num[-1] == "1":
@@ -503,36 +500,17 @@ def port_data_adder(file_name, port_file_name,switch_details,max_port):
 
                                         blade_num = f"Blade {switch_2_blade_count}"
 
-                                    elif switch_num[-1] == "3":
-                                        switch_3_count += 1
-
-                                        fixed_switch_name = list_of_i[4][:-1] + "3"
-                                        list_of_i.insert(4,fixed_switch_name)
-                                        list_of_i.pop(5)
-
-                                        if switch_3_count == max_port:
-                                            switch_3_blade_count += 1
-                                            switch_3_count = 0
-
-                                            if switch_details[2].switch_model == "9407" and switch_3_blade_count == 3:
-                                                switch_3_blade_count = 5
-
-                                            elif switch_details[2].switch_model == "9410" and switch_3_blade_count == 5:
-                                                switch_3_blade_count = 7
-
-                                        blade_num = f"Blade {switch_3_blade_count}"
-
-                                else:
-                                    blade_num = "n/a"
+                                    else:
+                                        blade_num = "n/a"
 
                             list_of_i.insert(10,blade_num)
                             list_of_i.pop(11)
 
-                            list_of_i.insert(3,list_of_k[3])
+                            list_of_i.insert(3,list_of_k[2])
                             list_of_i.pop(4)
 
-                            if list_of_i[9][-1] != 1:
-                                new_host_name = list_of_i[4][:-1] + list_of_i[9][-1]
+                            if list_of_i[9][7] != 1:
+                                new_host_name = list_of_i[4][:-1] + list_of_i[9][7]
                                 list_of_i.insert(4,new_host_name)
                                 list_of_i.pop(5)
 
@@ -577,40 +555,109 @@ def new_switch_port_adder(switch_details,max_port):
 
                 if list_of_i[6] == "":
                     if list_of_i[7] == "Purple":
-                        if ap_count[int(list_of_i[9][-1])][1] == max_port:
-                            ap_count[int(list_of_i[9][-1])][1] = 0
-                            ap_count[int(list_of_i[9][-1])][0] += 1
+                        if ap_count[int(list_of_i[9][7])][1] == max_port:
+                            ap_count[int(list_of_i[9][7])][1] = 0
+                            ap_count[int(list_of_i[9][7])][0] += 1
 
-                        ap_count[int(list_of_i[9][-1])][1] += 1
-                        list_of_i.insert(6,f"Gi{ap_count[int(list_of_i[9][-1])][0]}/0/{ap_count[int(list_of_i[9][-1])][1]}")
-                        list_of_i.pop(7)
+                        ap_count[int(list_of_i[9][7])][1] += 1
+
+                        if switch_details[int(list_of_i[9][7])-1].switch_model == "9300":
+                            if 36 >= ap_count[int(list_of_i[9][7])][1]:
+                                list_of_i.insert(6,f"Tw{ap_count[int(list_of_i[9][7])][0]}/0/{ap_count[int(list_of_i[9][7])][1]}")
+                                list_of_i.pop(7)
+
+                            elif 36 < ap_count[int(list_of_i[9][7])][1]:
+                                list_of_i.insert(6,f"Te{ap_count[int(list_of_i[9][7])][0]}/0/{ap_count[int(list_of_i[9][7])][1]}")
+                                list_of_i.pop(7)
+
+                        elif switch_details[int(list_of_i[9][7])-1].switch_model == "9407":
+                            list_of_i.insert(6,f"Fi{ap_count[int(list_of_i[9][7])][0]}/0/{ap_count[int(list_of_i[9][7])][1]}")
+                            list_of_i.pop(7)
+
+                        elif switch_details[int(list_of_i[9][7])-1].switch_model == "9410":
+                            list_of_i.insert(6,f"Fi{ap_count[int(list_of_i[9][7])][0]}/0/{ap_count[int(list_of_i[9][7])][1]}")
+                            list_of_i.pop(7)
+
                         final_cutsheet.write(",".join(list_of_i))
                         continue
                 
                     else:
-                        if switch_blade_count[int(list_of_i[9][-1])][0] not in switch_details[int(list_of_i[9][-1])-1].filled_blades:
-                            while switch_blade_count[int(list_of_i[9][-1])][0] not in switch_details[int(list_of_i[9][-1])-1].filled_blades:
-                                switch_blade_count[int(list_of_i[9][-1])][0] += 1
+                        if switch_blade_count[int(list_of_i[9][7])][0] not in switch_details[int(list_of_i[9][7])-1].filled_blades:
+                            while switch_blade_count[int(list_of_i[9][7])][0] not in switch_details[int(list_of_i[9][7])-1].filled_blades:
+                                switch_blade_count[int(list_of_i[9][7])][0] += 1
 
-                        if switch_details[int(list_of_i[9][-1])-1].filled_blades[switch_blade_count[int(list_of_i[9][-1])][0]] == max_port:
-                            switch_blade_count[int(list_of_i[9][-1])][0] += 1
-                            switch_blade_count[int(list_of_i[9][-1])][1] = 1
-                            
-                        if int(list_of_i[10][-2]) != switch_blade_count[int(list_of_i[9][-1])][0]:
-                            if switch_details[int(list_of_i[9][-1])-1].filled_blades[int(list_of_i[10][-1])] == max_port:
+                        if switch_details[int(list_of_i[9][7])-1].filled_blades[switch_blade_count[int(list_of_i[9][7])][0]] == max_port:
+                            switch_blade_count[int(list_of_i[9][7])][0] += 1
+                            switch_blade_count[int(list_of_i[9][7])][1] = 1
+
+                        if int(list_of_i[10][6]) != switch_blade_count[int(list_of_i[9][7])][0]:
+                            if switch_details[int(list_of_i[9][7])-1].filled_blades[int(list_of_i[10][6])] == max_port:
                                 continue
+                            print(list_of_i)
+                            print()
 
-                            list_of_i.insert(6,f"Gi{int(list_of_i[10][-1])}/0/{switch_details[int(list_of_i[9][-1])-1].filled_blades[int(list_of_i[10][-1])]}")
-                            list_of_i.pop(7)
+                            if switch_details[int(list_of_i[9][7])-1].switch_model == "9300":
+                                if 36 >= switch_details[int(list_of_i[9][7])-1].filled_blades[int(list_of_i[10][6])]:
+                                    list_of_i.insert(6,f"Tw{int(list_of_i[10][6])}/0/{switch_details[int(list_of_i[9][7])-1].filled_blades[int(list_of_i[10][6])]}")
+                                    list_of_i.pop(7)
+
+                                elif 36 < switch_details[int(list_of_i[9][7])-1].filled_blades[int(list_of_i[10][6])]:
+                                    list_of_i.insert(6,f"Te{int(list_of_i[10][6])}/0/{switch_details[int(list_of_i[9][7])-1].filled_blades[int(list_of_i[10][6])]}")
+                                    list_of_i.pop(7)
+
+                            elif switch_details[int(list_of_i[9][7])-1].switch_model == "9407":
+                                if 3 > int(list_of_i[10][6]):
+                                    list_of_i.insert(6,f"Fi{int(list_of_i[10][6])}/0/{switch_details[int(list_of_i[9][7])-1].filled_blades[int(list_of_i[10][6])]}")
+                                    list_of_i.pop(7)
+
+                                elif int(list_of_i[10][6]) >= 5:
+                                    list_of_i.insert(6,f"Gi{int(list_of_i[10][6])}/0/{switch_details[int(list_of_i[9][7])-1].filled_blades[int(list_of_i[10][6])]}")
+                                    list_of_i.pop(7)
+
+                            elif switch_details[int(list_of_i[9][7])-1].switch_model == "9410":
+                                if 5 > int(list_of_i[10][6]):
+                                    list_of_i.insert(6,f"Fi{int(list_of_i[10][6])}/0/{switch_details[int(list_of_i[9][7])-1].filled_blades[int(list_of_i[10][6])]}")
+                                    list_of_i.pop(7)
+                                    
+                                elif int(list_of_i[10][6]) >= 7:
+                                    list_of_i.insert(6,f"Gi{int(list_of_i[10][6])}/0/{switch_details[int(list_of_i[9][7])-1].filled_blades[int(list_of_i[10][6])]}")
+                                    list_of_i.pop(7)
+
                             final_cutsheet.write(",".join(list_of_i))
-                            switch_details[int(list_of_i[9][-1])-1].filled_blades[int(list_of_i[10][-1])] += 1
+                            switch_details[int(list_of_i[9][7])-1].filled_blades[int(list_of_i[10][6])] += 1
                             
                         else:
-                            list_of_i.insert(6,f"Gi{switch_blade_count[int(list_of_i[9][-1])][0]}/0/{switch_blade_count[int(list_of_i[9][-1])][1]}")
-                            list_of_i.pop(7)
+                            if switch_details[int(list_of_i[9][7])-1].switch_model == "9300":
+                                if 36 >= switch_blade_count[int(list_of_i[9][7])][1]:
+                                    list_of_i.insert(6,f"Tw{switch_blade_count[int(list_of_i[9][7])][0]}/0/{switch_blade_count[int(list_of_i[9][7])][1]}")
+                                    list_of_i.pop(7)
+
+                                elif 36 < switch_blade_count[int(list_of_i[9][7])][1]:
+                                    list_of_i.insert(6,f"Te{switch_blade_count[int(list_of_i[9][7])][0]}/0/{switch_blade_count[int(list_of_i[9][7])][1]}")
+                                    list_of_i.pop(7)
+
+                            elif switch_details[int(list_of_i[9][7])-1].switch_model == "9407":
+                                if 3 > switch_blade_count[int(list_of_i[9][7])][0]:
+                                    list_of_i.insert(6,f"Fi{switch_blade_count[int(list_of_i[9][7])][0]}/0/{switch_blade_count[int(list_of_i[9][7])][1]}")
+                                    list_of_i.pop(7)
+
+                                elif switch_blade_count[int(list_of_i[9][7])][0] >=  5:
+                                    list_of_i.insert(6,f"Gi{switch_blade_count[int(list_of_i[9][7])][0]}/0/{switch_blade_count[int(list_of_i[9][7])][1]}")
+                                    list_of_i.pop(7)
+
+                            elif switch_details[int(list_of_i[9][7])-1].switch_model == "9410":
+                                if 5 > switch_blade_count[int(list_of_i[9][7])][0]:
+                                    list_of_i.insert(6,f"Fi{switch_blade_count[int(list_of_i[9][7])][0]}/0/{switch_blade_count[int(list_of_i[9][7])][1]}")
+                                    list_of_i.pop(7)
+                                    
+                                elif switch_blade_count[int(list_of_i[9][7])][0] >= 7:
+                                    list_of_i.insert(6,f"Gi{switch_blade_count[int(list_of_i[9][7])][0]}/0/{switch_blade_count[int(list_of_i[9][7])][1]}")
+                                    list_of_i.pop(7)
+
+                            
                             final_cutsheet.write(",".join(list_of_i))
-                            switch_details[int(list_of_i[9][-1])-1].filled_blades[switch_blade_count[int(list_of_i[9][-1])][0]] += 1
-                            switch_blade_count[int(list_of_i[9][-1])][1] += 1
+                            switch_details[int(list_of_i[9][7])-1].filled_blades[switch_blade_count[int(list_of_i[9][7])][0]] += 1
+                            switch_blade_count[int(list_of_i[9][7])][1] += 1
 
     os.remove(f"Finished Cutsheet.txt")
                         
@@ -698,10 +745,10 @@ def idf_config(site_vlans,switch_details):
                     if int(list_of_p[4][int(-1)])-1 == j:
 
                         if list_of_p[15] != "" and list_of_p[6][-1].isnumeric():
-                            switch_list[j].write(f"interface {list_of_p[6]}\nvlan {list_of_p[14]}\nvlan {list_of_p[15]}\n!\n")
+                            switch_list[j].write(f"interface {list_of_p[6]}\nswitchport access vlan {list_of_p[14]}\nswitchport voice vlan {list_of_p[15]}\n!\n")
                             
                         elif list_of_p[15] == "":
-                            switch_list[j].write(f"interface {list_of_p[6]}\nvlan {list_of_p[14]}\n!\n")
+                            switch_list[j].write(f"interface {list_of_p[6]}\nswitchport accesss vlan {list_of_p[14]}\n!\n")
             switchport_vlans.close()
 
 def wap_sheet(file_name,wap_file,switch_details):
@@ -740,7 +787,7 @@ def wap_sheet(file_name,wap_file,switch_details):
                                 if switch_count > len(switch_details):
                                     switch_count = 1
                             
-                            new_switch_port = f"Gi{ap_swapper_count[switch_count][3][0]}/0/{ap_swapper_count[switch_count][ap_swapper_count[switch_count][3][0]][0]}"
+                            new_switch_port = f"Fi{ap_swapper_count[switch_count][3][0]}/0/{ap_swapper_count[switch_count][ap_swapper_count[switch_count][3][0]][0]}"
                             ap_swapper_count[switch_count][3][1] += 1
                             ap_swapper_count[switch_count][ap_swapper_count[switch_count][3][0]][0] -= 1                            
                             
