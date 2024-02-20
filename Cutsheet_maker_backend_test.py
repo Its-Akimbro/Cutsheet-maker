@@ -418,6 +418,7 @@ def port_data_adder(file_name, port_file_name,switch_details,max_port):
 
                     for k in patch_panel:
                         list_of_k = k.split(",")
+                        print(list_of_k)
 
                         if list_of_k[1] == list_of_i[2] and list_of_i[3] == "":
 
@@ -574,6 +575,16 @@ def new_switch_port_adder(switch_details,max_port):
 
             for i in cutsheet_w_patchpanel_info:
                 list_of_i = i.split(",")
+
+                if list_of_i[10] == "":
+                    blade = 0
+
+                    for i in switch_details[int(list_of_i[9][7])-1].filled_blades.keys():
+                        if i > blade:
+                            blade = i
+
+                    list_of_i[10] = f"Blade {blade}"
+
 
                 if int(list_of_i[10][6]) not in switch_details[int(list_of_i[9][7])-1].filled_blades.keys():
                     for i in switch_details[int(list_of_i[9][7])-1].filled_blades:
