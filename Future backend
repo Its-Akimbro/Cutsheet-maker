@@ -1,0 +1,37 @@
+import paramiko
+import time
+
+def cisco_ssh_connect(hostname, username, password, commands):
+    # Create an SSH client
+    ssh = paramiko.SSHClient()
+
+    # Automatically add the server's host key (this is insecure and should be improved in a production environment)
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        # Connect to the Cisco device
+        ssh.connect(hostname, username=username, password=password, look_for_keys=False)
+
+        # Start an interactive shell
+        shell = ssh.invoke_shell()
+
+        # Execute commands
+        for command in commands:
+            shell.send(command + "\n")
+            time.sleep(2)  # Allow time for the command to be executed
+
+            # Receive and print the output
+            output = shell.recv(65535).decode()
+            print(f"Command: {command}\n{output}")
+
+    finally:
+        # Close the SSH connection
+        ssh.close()
+
+# Replace these values with your Cisco device credentials and commands
+hostname = '192.168.1.100'
+username = 'admin'
+password = 'Cisco!234'
+commands_to_execute = ['show version', 'show interfaces']
+
+cisco_ssh_connect(hostname, username, password, commands_to_execute)
