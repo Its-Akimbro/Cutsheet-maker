@@ -378,6 +378,11 @@ def mac_and_ip_2():
     os.remove(f"vlan added {legacy_switch_name}.txt")
     return 1
 
+
+
+
+
+
 def max_port_finder(wap_file, file_name, switch_count):
     with open(wap_file) as wireless_ap_count:
         with open(file_name) as idf_matcher:
@@ -400,16 +405,9 @@ def max_port_finder(wap_file, file_name, switch_count):
                 total_ports = (96*int(switch_count)) - ap_count
                 return round(total_ports/(2*int(switch_count)))-3
 
-def port_data_adder(file_name, port_file_name,switch_details,max_port):
+def port_data_adder(file_name, port_file_name):
     with open(file_name) as python_made_data:
         with open(f"Finished Cutsheet.txt", "w") as Cutsheet:    
-            switch_1_count = 0
-            switch_1_blade_count = 1
-
-            switch_2_count = 0
-            switch_2_blade_count = 1
-
-            switch_count = 0
 
             for i in python_made_data:
                 with open(port_file_name) as patch_panel:
@@ -418,107 +416,19 @@ def port_data_adder(file_name, port_file_name,switch_details,max_port):
 
                     for k in patch_panel:
                         list_of_k = k.split(",")
-                        print(list_of_k)
 
-                        if list_of_k[1] == list_of_i[2] and list_of_i[3] == "":
-
-                            if "as-" in list_of_k[5].lower():
-                                switch_num = "Switch " + list_of_k[5][list_of_k[5].find("AS-".lower())]
+                        if list_of_k[0] == "Legacy Switch" or list_of_i[0] == "Legacy Switch":
+                            continue
+                        
+                        if "1" in list_of_k[9] or "2" in list_of_k[9]:
                             
-                            if "as-" not in list_of_k[5].lower():
-                                switch_num = f"switch 1"
-
-                            else:
-                                switch_count += 1
-                                if switch_count % 2 == 0:                   
-                                    switch_num = f"Switch 2"
-
-                                else:
-                                    switch_num = f"switch 1"
-
-                            list_of_i.insert(9,switch_num)
-                            list_of_i.pop(10)
-                            
-                            if "b" in list_of_k[5].lower():
-                                if list_of_k[5].find("AS".lower()) > list_of_k[5].find("B".lower()):
-                                    blade_num = list_of_k[5][list_of_k[5].find("B".lower()):list_of_k[5].find("AS".lower())]
-                                    
-                                elif list_of_k[5].find("AS".upper()) > list_of_k[5].find("B".lower()):
-                                    blade_num = list_of_k[5][list_of_k[5].find("B".lower()):list_of_k[5].find("AS".upper())]
-
-                                else:
-                                    if "B" in list_of_k[5]:
-                                        blade_num = list_of_k[5][list_of_k[5].find("B"):]
-
-                                    if "b" in list_of_k[5]:
-                                        blade_num = list_of_k[5][list_of_k[5].find("b"):]
-
-                            elif list_of_k[5] == "" or "b" not in list_of_k[5]:
-                                
-                                if len(switch_details) == 1:                                        
-                                        if switch_num[-1] == "1":
-                                            switch_1_count += 1
-
-                                            if switch_1_count == max_port:
-                                                switch_1_blade_count += 1
-                                                switch_1_count = 0
-                                                                    
-                                                if switch_details[0].switch_model == "9407" and switch_1_blade_count == 3:
-                                                    switch_1_blade_count = 5
-
-                                                elif switch_details[0].switch_model == "9410" and switch_1_blade_count == 4:
-                                                    switch_1_blade_count = 7
-
-                                            blade_num = f"Blade {switch_1_blade_count}"
-
-                                elif len(switch_details) > 1:
-                                    
-                                    if switch_num[-1] == "1":
-                                        switch_1_count += 1
-
-                                        if switch_1_count == max_port:
-                                            switch_1_blade_count += 1
-                                            switch_1_count = 0
-
-                                            if switch_details[0].switch_model == "9407" and switch_1_blade_count == 3:
-                                                switch_1_blade_count = 5                                    
-
-                                            elif switch_details[0].switch_model == "9410" and switch_1_blade_count == 5:
-                                                switch_1_blade_count = 7
-                                        
-                                        blade_num = f"Blade {switch_1_blade_count}"
-                                
-
-                                    elif switch_num[-1] == "2":
-                                        switch_2_count += 1
-
-                                        fixed_switch_name = list_of_i[4][:-1] + "2"
-                                        list_of_i.insert(4,fixed_switch_name)
-                                        list_of_i.pop(5)
-
-                                        if switch_2_count == max_port:
-                                            switch_2_blade_count += 1
-                                            switch_2_count = 0
-
-                                            if switch_details[1].switch_model == "9407" and switch_2_blade_count == 3:
-                                                switch_2_blade_count = 5
-
-                                            elif switch_details[1].switch_model == "9410" and switch_2_blade_count == 5:
-                                                switch_2_blade_count = 7
-
-                                        blade_num = f"Blade {switch_2_blade_count}"
-
-                                    else:
-                                        blade_num = "n/a"
-
-                            list_of_i.insert(10,blade_num)
-                            list_of_i.pop(11)
-
-                            list_of_i.insert(3,list_of_k[2])
-                            list_of_i.pop(4)
-
-                            if int(list_of_i[9][7]) != 1:
-                                new_host_name = list_of_i[4][:-1] + list_of_i[9][7]
+                            if list_of_k[2] == list_of_i[2]:
+                                list_of_i[3] = list_of_k[3]
+                            list_of_i[9] = list_of_k[9]
+                            list_of_i[10] = list_of_k[10]
+                            print(list_of_i)
+                            if int(list_of_k[9][-1]) != 1:
+                                new_host_name = list_of_i[4][:-1] + list_of_i[9][-1]
 
                                 list_of_i.insert(4,new_host_name)
                                 list_of_i.pop(5)
@@ -539,7 +449,7 @@ def port_data_adder(file_name, port_file_name,switch_details,max_port):
                                     list_of_i.insert(5,full_ip)
                                     list_of_i.pop(6)
 
-                Cutsheet.write(",".join(list_of_i))
+                    Cutsheet.write(",".join(list_of_i))
         
 def legacy_ap_count(switch_details, max_port):
     with open(f"Finished Cutsheet.txt") as ap_finder:
@@ -813,3 +723,34 @@ def add_wap_to_idf(switch_details):
                     list_of_k = k.split(",")
                     if list_of_k[1] == new_switch_name[i]:
                         idf_config.write(f"interface {list_of_k[2]}\ndescription {list_of_k[7]}\nswitchport access{list_of_k[6]}\n!\n")
+
+def empty_remover(patch_panel_file,switch_details):
+    with open(patch_panel_file) as line:
+        lines = line.readlines()
+        with open(patch_panel_file, "w") as without_empty:
+            count = 0
+            for i in lines:
+                list_of_i = i.split(",")
+
+                if list_of_i[0] == "":
+                    pass
+
+                else:
+                    if list_of_i[9] == "" or list_of_i[0] == "Legacy Switch":
+                        if len(switch_details) > 1:
+                            if count % 2 != 0:
+                                list_of_i[9] = "Switch 1"
+                                count += 1
+                            else:
+                                list_of_i[9] = "Switch 2"
+                                count += 1
+                        else:
+                            list_of_i[9] = "Switch 1"
+
+                    if list_of_i[10] == "":
+                        list_of_i[10] = "Blade 1"
+
+                    without_empty.write(",".join(list_of_i))
+
+
+ 
