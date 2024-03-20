@@ -1,0 +1,564 @@
+import paramiko
+from telnetlib import Telnet as tn
+import csv
+import time
+import os
+
+def search_oui_database(filename):
+    oui_db = {}
+    with open(filename, 'r', encoding='utf-8') as oui_database:
+        for i in oui_database:
+            if '(base 16)' in i:
+                parts = i.split('(base 16)')
+                mac_prefix = parts[0].strip()
+                vendor = parts[1].strip()
+                oui_db[mac_prefix] = vendor
+    return oui_db
+
+def test_ssh_conection(legacy_ip_address, username, password):
+    try:
+    
+    
+        ssh = paramiko.SSHClient()
+
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        ssh.connect(legacy_ip_address, username=username, password=password, look_for_keys=False)
+
+        ssh.close()
+
+        return True
+    
+    except:
+        return False
+
+def ssh_get_switch_info_and_write_to_csv(legacy_ip_address, username, password):
+    global hostname
+
+    ssh = paramiko.SSHClient()
+
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        ssh.connect(legacy_ip_address, username=username, password=password, look_for_keys=False)
+
+        shell = ssh.invoke_shell()
+
+        shell.send("terminal length 0\n")
+        time.sleep(1)  
+
+        shell.send("sh run | inc hostname\n")
+        time.sleep(20)  
+
+        hostname_output = shell.recv(65535).decode()
+        list_of_hostname_output = hostname_output.split()
+
+        hostname = list_of_hostname_output[list_of_hostname_output.index('hostname')+2]
+
+        shell.send("show interfaces status\n")
+        time.sleep(2)  
+
+        timeout = 10
+        start_time = time.time()
+        output = ""
+
+        while time.time() - start_time < timeout:
+            if shell.recv_ready():
+                page_output = shell.recv(65535).decode()
+                output += page_output
+            
+            time.sleep(1)
+
+        with open(f"{hostname} int status.csv", 'w', newline='') as int_status_csv:
+            status_csv_writer = csv.writer(int_status_csv)
+
+            for i in output.splitlines()[1:]:
+                list_of_i = i.split()
+
+                try:
+                    if list_of_i[0][2].isnumeric() and list_of_i[0][6].isnumeric():
+                        interface = list_of_i[0] 
+
+                    for i in list_of_i:
+                        if "connected" in i or "notconnect" in i or 'err-disabled' in i or 'disabled' in i:
+                            Status = i
+
+                    for i in list_of_i: 
+                        if "full" in i or "half" in i or "auto" in i:
+                            duplex = i
+
+                    for i in list_of_i[1:-1]: 
+                        if "a-10" in i or "a-100" in i or "a-1000" in i or "2500" in i or "5000" in i:
+                            speed = i
+
+                        else:
+                            speed = "auto"
+
+                    if interface == "":
+                        continue
+                    
+                    status_csv_writer.writerow([hostname, legacy_ip_address, interface, Status, duplex, speed])
+
+                except:
+                    continue
+
+                Status = ""
+                duplex = ""
+                speed = ""
+                interface = ""
+
+        int_status_csv.close()
+        
+        shell.send("show run | sec int\n")
+        time.sleep(3)  
+
+        timeout = 10
+        start_time = time.time()
+        output = ""
+
+        while time.time() - start_time < timeout:
+            if shell.recv_ready():
+                page_output = shell.recv(65535).decode()
+                output += page_output
+            time.sleep(1)
+
+        list_of_output = output.split("interface ")
+
+        with open(f'{hostname} int des and vlans.csv', 'w', newline='') as port_info_csv:
+            port_info_csv_writer = csv.writer(port_info_csv)
+
+            for i in list_of_output:
+                list_of_i = i.split("\r\n")
+
+                interface = list_of_i[0]
+
+                try:
+                    if '/' not in list_of_i[0]:
+                        continue
+                except:
+                    continue
+
+                if 'GigabitEthernet' in list_of_i[0]:
+
+                    if 'AppGigabitEthernet' in list_of_i[0]:
+                        interface = 'Ap' + list_of_i[0][list_of_i[0].index("/")-1:]
+
+                    elif 'TwoGigabitEthernet' in list_of_i[0]:
+                        interface = 'Tw' + list_of_i[0][list_of_i[0].index("/")-1:]
+
+                    elif 'FiveGigabitEthernet' in list_of_i[0]:
+                        interface = 'Fi' + list_of_i[0][list_of_i[0].index("/")-1:]
+
+                    elif 'TenGigabitEthernet' in list_of_i[0]:
+                        interface = 'Te' + list_of_i[0][list_of_i[0].index("/")-1:]
+
+                    elif 'FortyGigabitEthernet' in list_of_i[0]:
+                        interface = 'Fo' + list_of_i[0][list_of_i[0].index("/")-1:]
+                
+                    else:
+                        interface = 'Gi' + list_of_i[0][list_of_i[0].index("/")-1:]
+
+                port_desc = ""
+                access_vlan = ""
+                voice_vlan = ""
+
+                for k in list_of_i:
+                    if 'description' in k:
+                        port_desc = k[13:]
+
+                    if 'switchport access vlan' in k:
+                        access_vlan = k[23:]
+
+                    if 'switchport voice vlan' in k:
+                        voice_vlan = k[22:]
+
+                port_info_csv_writer.writerow([interface, legacy_ip_address, port_desc, access_vlan, voice_vlan])
+
+        port_info_csv.close()
+
+        shell.send("show mac address-table\n")
+        time.sleep(3)  
+
+        timeout = 10
+        start_time = time.time()
+        output = ""
+
+        while time.time() - start_time < timeout:
+            if shell.recv_ready():
+                page_output = shell.recv(65535).decode()
+                output += page_output
+            time.sleep(2)
+
+        with open(f"{hostname} int macs.csv", "w", newline='') as mac_csv_file:
+             with open(f"{hostname} int status.csv", newline='') as int_status_csv:
+                status_csv_writer = csv.writer(int_status_csv)
+                mac_csv_writer = csv.writer(mac_csv_file)
+
+                list_of_output = output.split('\r\n')
+                macs = []
+
+                for i in int_status_csv:
+                    list_of_i = i.split(',')
+
+                    for k in list_of_output:
+                        
+                        list_of_k = k.split()
+
+                        if list_of_k == [] or list_of_k[0].isnumeric() == False:
+                            continue
+
+                        if list_of_i[2] == list_of_k[-1]:
+                            if list_of_i[2] not in macs:
+                                macs.append(list_of_i[2])
+
+                            if list_of_k[1] in macs:
+                                continue
+                            else:
+                                macs.append(list_of_k[1])
+
+                        elif list_of_i[2] != list_of_k[-1]:
+                            if list_of_i[2] not in macs:
+                                macs.append(list_of_i[2])
+
+                    mac_csv_writer.writerow(macs)
+
+                    macs = []
+
+    finally:
+        ssh.close()
+        vendor_finder()
+
+def telnet_get_switch_info_and_write_to_csv(legacy_ip_address, username, password):
+    global hostname
+
+    try:
+        telnet = tn.open('10.230.8.34')
+
+        tn.read_until(b'username: ')
+        tn.write(b'a734624\n')
+
+        telnet.read_until(b'password: ')
+        telnet.write(b'Vapory1234$\n')
+
+        telnet.read_until(b'prompt$ ')
+
+        telnet.write(b"show version\n")
+        output = telnet.read_until(b'prompt$ ')
+
+        print(output.decode('utf-8'))
+
+        telnet.close()
+
+
+
+
+        # shell.send("terminal length 0\n")
+        # time.sleep(1)  
+
+        # shell.send("sh run | inc hostname\n")
+        # time.sleep(20)  
+
+        # hostname_output = shell.recv(65535).decode()
+        # list_of_hostname_output = hostname_output.split()
+
+        # hostname = list_of_hostname_output[list_of_hostname_output.index('hostname')+2]
+
+        # shell.send("show interfaces status\n")
+        # time.sleep(2)  
+
+        # timeout = 10
+        # start_time = time.time()
+        # output = ""
+
+        # while time.time() - start_time < timeout:
+        #     if shell.recv_ready():
+        #         page_output = shell.recv(65535).decode()
+        #         output += page_output
+            
+        #     time.sleep(1)
+
+        # with open(f"{hostname} int status.csv", 'w', newline='') as int_status_csv:
+        #     status_csv_writer = csv.writer(int_status_csv)
+
+        #     for i in output.splitlines()[1:]:
+        #         list_of_i = i.split()
+
+        #         try:
+        #             if list_of_i[0][2].isnumeric() and list_of_i[0][6].isnumeric():
+        #                 interface = list_of_i[0] 
+
+        #             for i in list_of_i:
+        #                 if "connected" in i or "notconnect" in i or 'err-disabled' in i or 'disabled' in i:
+        #                     Status = i
+
+        #             for i in list_of_i: 
+        #                 if "full" in i or "half" in i or "auto" in i:
+        #                     duplex = i
+
+        #             for i in list_of_i[1:-1]:
+        #                 if "a-10" in i or "a-100" in i or "a-1000" in i or "2500" in i or "5000" in i:
+        #                     speed = i
+
+        #                 else:
+        #                     speed = "auto"
+
+        #             if interface == "":
+        #                 continue
+                    
+        #             status_csv_writer.writerow([hostname, legacy_ip_address, interface, Status, duplex, speed])
+
+        #         except:
+        #             continue
+
+        #         Status = ""
+        #         duplex = ""
+        #         speed = ""
+        #         interface = ""
+
+        # int_status_csv.close()
+        
+        # shell.send("show run | sec int\n")
+        # time.sleep(3)  
+
+        # timeout = 10
+        # start_time = time.time()
+        # output = ""
+
+        # while time.time() - start_time < timeout:
+        #     if shell.recv_ready():
+        #         page_output = shell.recv(65535).decode()
+        #         output += page_output
+        #     time.sleep(1)
+
+        # list_of_output = output.split("interface ")
+
+        # with open(f'{hostname} int des and vlans.csv', 'w', newline='') as port_info_csv:
+        #     port_info_csv_writer = csv.writer(port_info_csv)
+
+        #     for i in list_of_output:
+        #         list_of_i = i.split("\r\n")
+
+        #         interface = list_of_i[0]
+
+        #         try:
+        #             if '/' not in list_of_i[0]:
+        #                 continue
+        #         except:
+        #             continue
+
+        #         if 'GigabitEthernet' in list_of_i[0]:
+
+        #             if 'AppGigabitEthernet' in list_of_i[0]:
+        #                 interface = 'Ap' + list_of_i[0][list_of_i[0].index("/")-1:]
+
+        #             elif 'TwoGigabitEthernet' in list_of_i[0]:
+        #                 interface = 'Tw' + list_of_i[0][list_of_i[0].index("/")-1:]
+
+        #             elif 'FiveGigabitEthernet' in list_of_i[0]:
+        #                 interface = 'Fi' + list_of_i[0][list_of_i[0].index("/")-1:]
+
+        #             elif 'TenGigabitEthernet' in list_of_i[0]:
+        #                 interface = 'Te' + list_of_i[0][list_of_i[0].index("/")-1:]
+
+        #             elif 'FortyGigabitEthernet' in list_of_i[0]:
+        #                 interface = 'Fo' + list_of_i[0][list_of_i[0].index("/")-1:]
+                
+        #             else:
+        #                 interface = 'Gi' + list_of_i[0][list_of_i[0].index("/")-1:]
+
+        #         port_desc = ""
+        #         access_vlan = ""
+        #         voice_vlan = ""
+
+        #         for k in list_of_i:
+        #             if 'description' in k:
+        #                 port_desc = k[13:]
+
+        #             if 'switchport access vlan' in k:
+        #                 access_vlan = k[23:]
+
+        #             if 'switchport voice vlan' in k:
+        #                 voice_vlan = k[22:]
+
+        #         port_info_csv_writer.writerow([interface, legacy_ip_address, port_desc, access_vlan, voice_vlan])
+
+        # port_info_csv.close()
+
+        # shell.send("show mac address-table\n")
+        # time.sleep(3)  
+
+        # timeout = 10
+        # start_time = time.time()
+        # output = ""
+
+        # while time.time() - start_time < timeout:
+        #     if shell.recv_ready():
+        #         page_output = shell.recv(65535).decode()
+        #         output += page_output
+        #     time.sleep(2)
+
+        # with open(f"{hostname} int macs.csv", "w", newline='') as mac_csv_file:
+        #      with open(f"{hostname} int status.csv", newline='') as int_status_csv:
+        #         status_csv_writer = csv.writer(int_status_csv)
+        #         mac_csv_writer = csv.writer(mac_csv_file)
+
+        #         list_of_output = output.split('\r\n')
+        #         macs = []
+
+        #         for i in int_status_csv:
+        #             list_of_i = i.split(',')
+
+        #             for k in list_of_output:
+                        
+        #                 list_of_k = k.split()
+
+        #                 if list_of_k == [] or list_of_k[0].isnumeric() == False:
+        #                     continue
+
+        #                 if list_of_i[2] == list_of_k[-1]:
+        #                     if list_of_i[2] not in macs:
+        #                         macs.append(list_of_i[2])
+
+        #                     if list_of_k[1] in macs:
+        #                         continue
+        #                     else:
+        #                         macs.append(list_of_k[1])
+
+        #                 elif list_of_i[2] != list_of_k[-1]:
+        #                     if list_of_i[2] not in macs:
+        #                         macs.append(list_of_i[2])
+
+        #             mac_csv_writer.writerow(macs)
+
+        #             macs = []
+
+    finally:
+        print()
+        # tn.close()
+        # ssh.close()
+        # vendor_finder()
+
+def mac_lookup(mac_address, oui_db):
+    mac_address = mac_address.split('.')
+    mac_prefix = ''.join(mac_address)
+    mac_prefix = mac_prefix[:6].upper()
+    return oui_db.get(mac_prefix, "Vendor not found")
+
+def vendor_finder():
+    with open(f'{hostname} int macs.csv', newline='') as macs:
+        with open(f"{hostname} mac and vendor.csv", 'w', newline= '') as switch_info:
+            info_csv_writer = csv.writer(switch_info)
+            mac = []
+            mac_add = ''
+
+            for i in macs:
+                list_of_i = i.split(',')
+
+                for k in enumerate(list_of_i):
+
+                    if k[0] == 0 or k == "":
+
+                        if "\r\n" in k[1]:
+                            inter = k[1].strip('\r\n')
+                            switch_info.write(inter)
+                        continue
+
+                    vendor = mac_lookup(k[1],oui_db)
+                    if list_of_i[0] not in mac:
+                        mac.append(list_of_i[0])
+                    mac_add = k[1].strip('\r\n')    
+                    mac.append(mac_add)
+                    mac.append(vendor)
+                info_csv_writer.writerow(mac)
+                mac = []
+    os.remove(f'{hostname} int macs.csv')
+    pre_portmapper()
+
+def pre_portmapper():
+    with open(f'{hostname} int status.csv', newline='') as int_status:
+        with open(f'{hostname} int des and vlans.csv', newline='') as int_des_vlan:
+            with open(f'{hostname} mac and vendor.csv', newline='') as mac_vendor:
+             with open(f'{hostname} pre portmapped.csv', 'w', newline='') as pre_portmap:
+                pre_portmap_csv_writer = csv.writer(pre_portmap)
+                 
+                header = "Legacy Switch,Legacy Switch IP,Legacy Switch Port,PP Port #,New Switch,New Switch IP,New Switch Port,New Patch Cord Color,Critical Device (Y/N),Suggested switch,Suggested blade,Status,Speed,Duplex,Access Vlan,Voice Vlan,Legacy Port Description,Mac Address,Vendor,Mac Address,Vendor\n"
+                pre_portmap.write(header)
+
+                interface = ''
+                connection_status = ''
+                duplex = ''
+                negotiated_speed = ''
+                access_vlan = ''
+                voice_vlan = ''
+                port_desc = ''
+                vendor_name = []
+                 
+                for i in int_status:
+                    list_of_i = i.split(',')
+                    interface = list_of_i[2]
+                    connection_status = list_of_i[3]
+                    duplex = list_of_i[4]
+                    negotiated_speed = list_of_i[5].strip('\r\n')
+
+                    for k in int_des_vlan:
+                        list_of_k = k.split(',')
+
+                        if list_of_k[0] == list_of_i[2]:
+                            access_vlan = list_of_k[3]
+                            voice_vlan = list_of_k[4].strip('\r\n')
+                            port_desc = list_of_k[2]
+                            break
+
+                    row = [hostname,legacy_ip_address,interface,'',new_hostname,new_ip,'','','','','',connection_status,negotiated_speed,duplex,access_vlan,voice_vlan,port_desc]
+
+                    for l in mac_vendor:
+                        l = l.strip('\r\n')
+                        list_of_l = l.split(',')
+
+                        if list_of_i[2] in list_of_l[0]:
+                            mac_vendors_list = list_of_l[1:]
+                            break
+
+                    for q in mac_vendors_list:
+                        if '"' in q:
+                            q = q.strip('"')
+
+                        if q.count('.') == 2:
+                            if not vendor_name == False:
+                                row.append(','.join(vendor_name))
+                            row.append(q)
+
+                        else:
+                            vendor_name.append(q)
+                    else:
+                        row.append(','.join(vendor_name))
+
+                    row.pop(16)
+                    pre_portmap_csv_writer.writerow(row)
+
+                    access_vlan = ''
+                    voice_vlan = ''
+                    port_desc = ''
+                    vendor_name = []
+
+oui_db = search_oui_database('oui.txt')
+hostname = 'TX-LUF-MLT-HOSP-AC-IDF-J-01'
+
+# legacy_ip_address = '10.107.128.17'
+legacy_ip_address = '10.230.8.34'
+username = ''
+password = ''
+
+new_hostname = 'Test name'
+new_ip = 'Test ip'
+new_hostname = hostname.slice(None,None, -1)
+
+connection_test = test_ssh_conection(legacy_ip_address, username, password)
+
+if connection_test == True:
+    ssh_get_switch_info_and_write_to_csv(legacy_ip_address, username, password)
+
+if connection_test == False:
+    telnet_get_switch_info_and_write_to_csv(legacy_ip_address, username, password)
+
+pre_portmapper()
