@@ -234,12 +234,6 @@ def telnet_get_switch_info_and_write_to_csv(legacy_ip_address, username, passwor
     try:
         telnet = tn.open('10.230.8.34')
 
-        tn.read_until(b'username: ')
-        tn.write(b'a734624\n')
-
-        telnet.read_until(b'password: ')
-        telnet.write(b'Vapory1234$\n')
-
         telnet.read_until(b'prompt$ ')
 
         telnet.write(b"show version\n")
